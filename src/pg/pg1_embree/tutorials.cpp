@@ -185,6 +185,8 @@ int tutorial_3( const std::string file_name, const char * config )
 
 	Raytracer raytracer( 640, 480, deg2rad( 45.0 ),
 		Vector3( 175, -140, 130 ), Vector3( 0, 0, 35 ), config );
+
+	// ucite chceme aby kamera nebyla na 0, .. podle konstruktoru je poradi: from, at .. (at je 0.. )
 	raytracer.LoadScene( file_name );
 	raytracer.MainLoop();
 

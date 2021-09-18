@@ -142,8 +142,13 @@ Color4f Raytracer::get_pixel( const int x, const int y, const float t )
 		else
 			diff = { current_material->diffuse.x, current_material->diffuse.y, current_material->diffuse.z };
 
+		Color3f final_color{ 0, 0, 0 };
+		final_color.r = diff.r;
+		final_color.g = diff.g;
+		final_color.b = diff.b;
 
-		return Color4f{diff.r, diff.g, diff.b, 1.0f};
+
+		return Color4f{final_color.r, final_color.g, final_color.b, 1.0f};
 	}
 
 	float x_ = (float)x;

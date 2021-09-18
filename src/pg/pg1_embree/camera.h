@@ -29,7 +29,7 @@ private:
 	
 	Vector3 view_from_; // ray origin or eye or O
 	Vector3 view_at_; // target T
-	Vector3 up_{ Vector3( 0.0f, 0.0f, -1.0f ) }; // up vector
+	Vector3 up_{ Vector3( 0.0f, 0.0f, 1.0f ) }; // up vector
 
 	float f_y_{ 1.0f }; // focal lenght (px)
 
