@@ -3,6 +3,8 @@
 #include "objloader.h"
 #include "tutorials.h"
 
+#define SPECULAR_STRENGTH 0.5
+
 Raytracer::Raytracer( const int width, const int height,
 	const float fov_y, const Vector3 view_from, const Vector3 view_at,
 	const char * config ) : SimpleGuiDX11( width, height )
@@ -132,20 +134,96 @@ Color4f Raytracer::get_pixel( const int x, const int y, const float t )
 	{
 		current_material = surfaces_[ray_hit.hit.geomID]->get_material();
 
-		Color3f diff{0, 0, 0};
-		Color3f spec{0, 0, 0};
-		Color3f normal{0, 0, 0};
-		Color3f oppacity{0, 0, 0};
-		
+		Color3f diff{ 0, 0, 0 };
+		Color3f spec{ 0, 0, 0 };
+		Color3f normal{ 0, 0, 0 };
+		Color3f oppacity{ 0, 0, 0 };
+
+
 		if (current_material->get_texture(current_material->kDiffuseMapSlot) != nullptr)
-			diff = current_material->get_texture(current_material->kDiffuseMapSlot)->get_texel(ray_hit.hit.u, ray_hit.hit.v);
+		{
+			Vertex A = surfaces_[ray_hit.hit.geomID]->get_triangle(0).vertex(0);
+			Vertex B = surfaces_[ray_hit.hit.geomID]->get_triangle(0).vertex(1);
+			Vertex C = surfaces_[ray_hit.hit.geomID]->get_triangle(0).vertex(2);
+
+			float u = ray_hit.hit.u;
+			float v = ray_hit.hit.v;
+			float w = 1 - u - v;
+			float u_ = (A.texture_coords[0].u * w) + (B.texture_coords[0].u * u) + (C.texture_coords[0].u * v);
+			float v_ = (A.texture_coords[0].v * w) + (B.texture_coords[0].v * u) + (C.texture_coords[0].v * v);
+		
+			diff = current_material->get_texture(current_material->kDiffuseMapSlot)->get_texel(u_, v_);
+			return Color4f{ diff.r, diff.g, diff.b, 1.0f };
+			return Color4f{ 0.0f, 0.0f, 1.0f, 1.0f };
+		}
 		else
 			diff = { current_material->diffuse.x, current_material->diffuse.y, current_material->diffuse.z };
 
+		if (current_material->get_texture(current_material->kSpecularMapSlot) != nullptr)
+			spec = current_material->get_texture(current_material->kSpecularMapSlot)->get_texel(ray_hit.hit.u, ray_hit.hit.v);
+		else
+			spec = { current_material->specular.x, current_material->specular.y, current_material->specular.z };
+
+
+		Vector3 normal_{};
+		normal_.x = ray_hit.hit.Ng_x;
+		normal_.y = ray_hit.hit.Ng_y;
+		normal_.z = ray_hit.hit.Ng_z;
+		normal_.Normalize();
+		normal = { normal_.x, normal_.y, normal_.z };
+
+		Vector3 light_position{ -200, 150, -120 };
+		Vector3 frag_pos
+		{
+			ray_hit.ray.org_x + (ray_hit.ray.dir_x * ray_hit.ray.tfar),
+			ray_hit.ray.org_y + (ray_hit.ray.dir_y * ray_hit.ray.tfar),
+			ray_hit.ray.org_z + (ray_hit.ray.dir_z * ray_hit.ray.tfar)
+		};
+		Vector3 light_direction
+		{
+			frag_pos.x - light_position.x,
+			frag_pos.y - light_position.y,
+			frag_pos.z - light_position.z
+		};
+		light_direction.Normalize();
+
+		/*
+		DIFFERENT WAY OF CALCULATING THE HIT POINT
+
+		Vector3 point_hit
+		{
+			(1.0f - u - v) * A.position.x + u * B.position.x + v * C.position.x,
+			(1.0f - u - v) * A.position.y + u * B.position.y + v * C.position.y,
+			(1.0f - u - v) * A.position.z + u * B.position.z + v * C.position.z
+		}
+		
+		*/
+
+
+		// diffuse
+		float diffuse_strength = light_direction.DotProduct(normal_);
+		diffuse_strength = max(diffuse_strength, 0.0f);
+		diff.r = diff.r * diffuse_strength;
+		diff.g = diff.g * diffuse_strength;
+		diff.b = diff.b * diffuse_strength;
+
+
+		// reflecton
+		Vector3 reflect_dir = camera_.view_direction - 2 * (camera_.view_direction.DotProduct(normal_) * normal_);
+		Vector3 halfway_dir = camera_.view_direction + light_direction;
+		halfway_dir.Normalize();
+		float spec_ = pow(max(normal_.DotProduct(halfway_dir), 0.0), current_material->shininess);
+		//float spec_ = pow(max(normal_.DotProduct(reflect_dir), 0.0), current_material->shininess);
+		spec.r = SPECULAR_STRENGTH * spec_;
+		spec.g = SPECULAR_STRENGTH * spec_;
+		spec.b = SPECULAR_STRENGTH * spec_;
+
+		//relection = direction - 2 (dot(direction, normal))normal;
+
 		Color3f final_color{ 0, 0, 0 };
-		final_color.r = diff.r;
-		final_color.g = diff.g;
-		final_color.b = diff.b;
+		final_color.r = diff.r + spec.r;
+		final_color.g = diff.g + spec.g;
+		final_color.b = diff.b + spec.b;
 
 
 		return Color4f{final_color.r, final_color.g, final_color.b, 1.0f};
@@ -153,7 +231,7 @@ Color4f Raytracer::get_pixel( const int x, const int y, const float t )
 
 	float x_ = (float)x;
 	float y_ = (float)y;
-	return Color4f{ x_/ 640.0f, y_ / 480.0f, 0.0f, 1.0f };
+	return Color4f{ x_/ 640.0f, 0.0f, y_ / 480.0f, 1.0f };
 	
 }
 

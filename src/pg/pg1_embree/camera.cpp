@@ -21,6 +21,7 @@ Camera::Camera( const int width, const int height, const float fov_y,
 
 
 	Vector3 _forward = view_from - view_at;
+	view_direction = _forward;
 	_forward.Normalize();
 	Vector3 x_cs = up_.CrossProduct(_forward);
 	Vector3 y_cs = _forward.CrossProduct(x_cs);
