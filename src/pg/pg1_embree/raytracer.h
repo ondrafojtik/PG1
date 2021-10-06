@@ -29,6 +29,16 @@ public:
 	int Ui();
 
 private:
+	Vector3 calc_diffuse(RTCRayHit ray_hit);
+	Vector3 calc_normal(RTCRayHit ray_hit);
+	Vector3 get_fragment_position(RTCRayHit ray_hit);
+	Vector3 calc_light_dir(RTCRayHit ray_hit);
+	Color4f calc_blinn_phong(RTCRayHit ray_hit);
+	RTCRayHit generate_ray_hit(RTCRay ray);
+	RTCRay generate_ray(Vector3 position, Vector3 direction, float tfar = FLT_MAX);
+	bool generate_shadow_ray(Vector3 position, Vector3 direction);
+
+private:
 	std::vector<Surface *> surfaces_;
 	std::vector<Material *> materials_;
 
@@ -38,4 +48,7 @@ private:
 
 	// my decl
 	Material* current_material = nullptr;
+	//Vector3 light_position{ 50, 20, 50 };
+	Vector3 light_position{ 175, 80, 100 };
+
 };
