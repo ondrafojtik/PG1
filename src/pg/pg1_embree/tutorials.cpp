@@ -183,8 +183,12 @@ int tutorial_3( const std::string file_name, const char * config )
 	//SimpleGuiDX11 gui( 640, 480 );
 	//gui.MainLoop();
 
-	Raytracer raytracer( 640, 480, deg2rad( 45.0 ),
-		Vector3( 175, -140, 130 ), Vector3( 0, 0, 35 ), config );
+	//original!
+	//Raytracer raytracer( 640, 480, deg2rad( 45.0 ),
+	//	Vector3( 175, -140, 130 ), Vector3( 0, 0, 35 ), config );
+	
+	Raytracer raytracer(640, 480, deg2rad(45.0),
+		Vector3(0, -5, 0), Vector3(0, 0, 0), config);
 
 	// ucite chceme aby kamera nebyla na 0, .. podle konstruktoru je poradi: from, at .. (at je 0.. )
 	raytracer.LoadScene( file_name );

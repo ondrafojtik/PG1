@@ -13,9 +13,10 @@ Raytracer::Raytracer( const int width, const int height,
 	InitDeviceAndScene( config );
 
 	camera_ = Camera( width, height, fov_y, view_from, view_at );
-	background = new Texture("C:\\dev\\pg1_template_embree_vs2019\\data\\snowy_cemetery.jpg");
-	//background = new Texture("C:\\dev\\pg1_template_embree_vs2019\\data\\photo_studio_loft_hall.jpg");
-	
+	//background = new Texture("C:\\dev\\pg1_template_embree_vs2019\\data\\snowy_cemetery.jpg");
+	//background = new Texture("C:\\dev\\pg1_template_embree_vs2019\\data\\large_corridor.jpg");
+	background = new Texture("C:\\dev\\pg1_template_embree_vs2019\\data\\photo_studio_loft_hall.jpg");
+
 }
 
 Raytracer::~Raytracer()
@@ -400,23 +401,24 @@ RTCRayHit Raytracer::generate_ray_hit(RTCRay ray)
 Color4f Raytracer::shader(RTCRayHit ray_hit, float ior)
 {
 	// return diffuse?
-	if (depth == 5)
-	{
-		depth = 0;
-		return calc_blinn_phong(ray_hit);
-	}
+	//if (depth == 5)
+	//{
+	//	depth = 0;
+	//	return calc_blinn_phong(ray_hit);
+	//}
 
 
 	if (ray_hit.hit.geomID != RTC_INVALID_GEOMETRY_ID)
 	{
-		// what did we hit
-		if (surfaces_[ray_hit.hit.geomID]->get_material()->get_name() == "green_plastic_transparent")
+		// what did we hit 
+		if (surfaces_[ray_hit.hit.geomID]->get_material()->get_name() == "green_plastic_transparent" || 
+			surfaces_[ray_hit.hit.geomID]->get_material()->get_name() == "wire_214229166")
 		{
-			//if (depth == 5)
-			//{
-			//	depth = 0;
-			//	return shader(ray_hit);
-			//}
+			if (depth == 10)
+			{
+				depth = 0;
+				return shader(ray_hit);
+			}
 			depth += 1;
 
 			Vector3 position{};
@@ -510,8 +512,8 @@ Color4f Raytracer::shader(RTCRayHit ray_hit, float ior)
 			//return multiply_color(blinn_phong, shader(reflected_ray_hit));
 			//multiply_color(reflected_color, reflectivity__);
 
-			return multiply_color(multiply_color(shader(refracted_ray_hit), 1), 1);
-			
+			//return refracted_color;
+
 			//Color4f amp = { 0.8, 1.0, 0.1, 1 };
 			Color4f amp = { 1, 1, 1, 1 };
 
@@ -688,7 +690,7 @@ Color4f Raytracer::shader(RTCRayHit ray_hit, float ior)
 	}
 	depth = 0;
 	// background
-	Vector3 dir{ ray_hit.ray.dir_x, -ray_hit.ray.dir_y, ray_hit.ray.dir_z };
+	Vector3 dir{ -ray_hit.ray.dir_x, ray_hit.ray.dir_y, ray_hit.ray.dir_z };
 	const float theta = acos(dir.z);
 	const float phi = atan2f(dir.y, dir.x) + float(3.14159265358979323846);
 	const float u = 1.0f - phi * 0.5f * float(0.318309886183790671538);
