@@ -2,6 +2,7 @@
 #include "raytracer.h"
 #include "objloader.h"
 #include "tutorials.h"
+#include <math.h>
 
 #define SPECULAR_STRENGTH 0.5
 
@@ -12,6 +13,9 @@ Raytracer::Raytracer( const int width, const int height,
 	InitDeviceAndScene( config );
 
 	camera_ = Camera( width, height, fov_y, view_from, view_at );
+	background = new Texture("C:\\dev\\pg1_template_embree_vs2019\\data\\snowy_cemetery.jpg");
+	//background = new Texture("C:\\dev\\pg1_template_embree_vs2019\\data\\photo_studio_loft_hall.jpg");
+	
 }
 
 Raytracer::~Raytracer()
@@ -73,38 +77,81 @@ void Raytracer::LoadScene( const std::string file_name )
 		// triangles loop
 		for ( int i = 0, k = 0; i < surface->no_triangles(); ++i )
 		{
-			Triangle & triangle = surface->get_triangle( i );
+Triangle& triangle = surface->get_triangle(i);
 
-			// vertices loop
-			for ( int j = 0; j < 3; ++j, ++k )
-			{
-				const Vertex & vertex = triangle.vertex( j );
+// vertices loop
+for (int j = 0; j < 3; ++j, ++k)
+{
+	const Vertex& vertex = triangle.vertex(j);
 
-				vertices[k].x = vertex.position.x;
-				vertices[k].y = vertex.position.y;
-				vertices[k].z = vertex.position.z;
+	vertices[k].x = vertex.position.x;
+	vertices[k].y = vertex.position.y;
+	vertices[k].z = vertex.position.z;
 
-				normals[k].x = vertex.normal.x;
-				normals[k].y = vertex.normal.y;
-				normals[k].z = vertex.normal.z;
+	normals[k].x = vertex.normal.x;
+	normals[k].y = vertex.normal.y;
+	normals[k].z = vertex.normal.z;
 
-				tex_coords[k].u = vertex.texture_coords[0].u;
-				tex_coords[k].v = vertex.texture_coords[0].v;
-			} // end of vertices loop
+	tex_coords[k].u = vertex.texture_coords[0].u;
+	tex_coords[k].v = vertex.texture_coords[0].v;
+} // end of vertices loop
 
-			triangles[i].v0 = k - 3;
-			triangles[i].v1 = k - 2;
-			triangles[i].v2 = k - 1;
+triangles[i].v0 = k - 3;
+triangles[i].v1 = k - 2;
+triangles[i].v2 = k - 1;
 		} // end of triangles loop
 
-		rtcCommitGeometry( mesh );
-		unsigned int geom_id = rtcAttachGeometry( scene_, mesh );
-		rtcReleaseGeometry( mesh );
+		rtcCommitGeometry(mesh);
+		unsigned int geom_id = rtcAttachGeometry(scene_, mesh);
+		rtcReleaseGeometry(mesh);
 	} // end of surfaces loop
 
-	rtcCommitScene( scene_ );
+	rtcCommitScene(scene_);
 }
 
+Color4f add_color(Color4f c1, Color4f c2)
+{
+	Color4f result{};
+	result.r = c1.r + c2.r;
+	result.g = c1.g + c2.g;
+	result.b = c1.b + c2.b;
+	result.a = 1.0f;
+
+	return result;
+}
+
+Color4f multiply_color(Color4f c1, Color4f c2)
+{
+	Color4f result{};
+	result.r = c1.r * c2.r;
+	result.g = c1.g * c2.g;
+	result.b = c1.b * c2.b;
+	result.a = c1.a * c2.a;
+
+	return result;
+}
+
+Color4f multiply_color(Color4f color, float value)
+{
+	Color4f result{};
+	result.r = color.r * value;
+	result.g = color.g * value;
+	result.b = color.b * value;
+	result.a = 1.0f;
+
+	return result;
+}
+
+Color4f multiply_color(Color4f color, Vector3 value)
+{
+	Color4f result{};
+	result.r = color.r * value.x;
+	result.g = color.g * value.y;
+	result.b = color.b * value.z;
+	result.a = 1.0f;
+
+	return result;
+}
 
 Vector3 reflect(Vector3 data, Vector3 normal)
 {
@@ -139,10 +186,11 @@ Vector3 Raytracer::calc_diffuse(RTCRayHit ray_hit)
 		diff = { current_material->diffuse.x, current_material->diffuse.y, current_material->diffuse.z };
 
 
-	return Vector3{diff.r, diff.g, diff.b};
+	return Vector3{ diff.r, diff.g, diff.b };
 }
 
-Vector3 Raytracer::calc_normal(RTCRayHit ray_hit) 
+// THIS DOESNT WORK
+Vector3 Raytracer::calc_normal(RTCRayHit ray_hit)
 {
 	RTCGeometry geometry = rtcGetGeometry(scene_, ray_hit.hit.geomID);
 
@@ -150,9 +198,21 @@ Vector3 Raytracer::calc_normal(RTCRayHit ray_hit)
 	rtcInterpolate0(geometry, ray_hit.hit.primID, ray_hit.hit.u, ray_hit.hit.v,
 		RTC_BUFFER_TYPE_VERTEX_ATTRIBUTE, 0, &normal_.x, 3);
 	normal_.Normalize();
+
+	if (normal_.x * ray_hit.ray.dir_x + normal_.y * ray_hit.ray.dir_y + normal_.z * ray_hit.ray.dir_z > 0.0f)
+	{
+		normal_.x *= -1;
+		normal_.y *= -1;
+		normal_.z *= -1;
+	}
+
+	//if (normal_.DotProduct({ ray_hit.ray.dir_x, ray_hit.ray.dir_y, ray_hit.ray.dir_z }) >= 0)
+	//	normal_ = -normal_;
+
 	return normal_;
 }
 
+// THIS DOESNT WORK
 Vector3 Raytracer::get_fragment_position(RTCRayHit ray_hit)
 {
 #if 0
@@ -181,20 +241,21 @@ Vector3 Raytracer::get_fragment_position(RTCRayHit ray_hit)
 		ray_hit.ray.org_y + (ray_hit.ray.dir_y * ray_hit.ray.tfar),
 		ray_hit.ray.org_z + (ray_hit.ray.dir_z * ray_hit.ray.tfar)
 	};
-	Vertex A = surfaces_[ray_hit.hit.geomID]->get_triangle(0).vertex(0);
-	Vertex B = surfaces_[ray_hit.hit.geomID]->get_triangle(0).vertex(1);
-	Vertex C = surfaces_[ray_hit.hit.geomID]->get_triangle(0).vertex(2);
-
-
-	// TODO(ondra): hit points are _inside_ the faces..
+	// calc normal
+	
+	Vector3 normal = calc_normal(ray_hit);
 	Vector3 light_dir = light_position - frag_pos;
 	light_dir.Normalize();
-	float value = calc_normal(ray_hit).DotProduct(light_dir);
-	if (value >= 0)
-		frag_pos += calc_normal(ray_hit);
-	else
-		frag_pos += calc_normal(ray_hit).Abs();
 
+	if ((normal.x * light_dir.x + normal.y * light_dir.y + normal.z * light_dir.z) > 0.0f) {
+		normal.x *= -1;
+		normal.y *= -1;
+		normal.z *= -1;
+	}
+	if (normal.DotProduct(light_dir) < 0)
+		normal = -normal;
+
+	frag_pos += normal * 0.001f;
 	
 	return frag_pos;
 
@@ -239,8 +300,6 @@ Color4f Raytracer::calc_blinn_phong(RTCRayHit ray_hit)
 	Vector3 light_dir = calc_light_dir(ray_hit);
 
 	// diffuse
-	// TODO(ondra): tohle je duvod proc chci abs, ne max..
-	//diffuse_strength = max(diffuse_strength, 0.0f);
 	float diffuse_strength = light_dir.DotProduct(normal);
 	diffuse_strength = abs(diffuse_strength);
 
@@ -249,11 +308,18 @@ Color4f Raytracer::calc_blinn_phong(RTCRayHit ray_hit)
 	diff.z = diff.z * diffuse_strength;
 
 	// reflecton
+	if (normal.DotProduct(camera_.view_direction) < 0)
+	{
+		normal.x *= -1;
+		normal.y *= -1;
+		normal.z *= -1;
+	}
 	Vector3 reflect_dir = reflect(camera_.view_direction, normal);
+	
 	Vector3 halfway_dir = camera_.view_direction + light_dir;
 	halfway_dir.Normalize();
-	float spec_ = pow(max(normal.DotProduct(halfway_dir), 0.0), current_material->shininess);
-	//float spec_ = pow(max(normal_.DotProduct(reflect_dir), 0.0), current_material->shininess);
+	//float spec_ = pow(max(normal.DotProduct(halfway_dir), 0.0), current_material->shininess);
+	float spec_ = pow(max(normal.DotProduct(reflect_dir), 0.0), current_material->shininess);
 	Vector3 spec{};
 	spec.x = SPECULAR_STRENGTH * spec_;
 	spec.y = SPECULAR_STRENGTH * spec_;
@@ -276,7 +342,7 @@ RTCRay Raytracer::generate_ray(Vector3 position, Vector3 direction, float tfar)
 	ray.org_x = position.x;
 	ray.org_y = position.y;
 	ray.org_z = position.z;
-	ray.tnear = FLT_MIN; // start of ray segment
+	ray.tnear = 0.01f; // start of ray segment
 	
 	ray.dir_x = direction.x;
 	ray.dir_y = direction.y;
@@ -323,13 +389,316 @@ RTCRayHit Raytracer::generate_ray_hit(RTCRay ray)
 	RTCRayHit ray_hit;
 	ray_hit.ray = ray;
 	ray_hit.hit = hit;
-
+	
 	// intersect ray with the scene
 	RTCIntersectContext context;
 	rtcInitIntersectContext(&context);
 	rtcIntersect1(scene_, &context, &ray_hit);
-
 	return ray_hit;
+}
+
+Color4f Raytracer::shader(RTCRayHit ray_hit, float ior)
+{
+	// return diffuse?
+	if (depth == 5)
+	{
+		depth = 0;
+		return calc_blinn_phong(ray_hit);
+	}
+
+
+	if (ray_hit.hit.geomID != RTC_INVALID_GEOMETRY_ID)
+	{
+		// what did we hit
+		if (surfaces_[ray_hit.hit.geomID]->get_material()->get_name() == "green_plastic_transparent")
+		{
+			//if (depth == 5)
+			//{
+			//	depth = 0;
+			//	return shader(ray_hit);
+			//}
+			depth += 1;
+
+			Vector3 position{};
+			position.x = ray_hit.ray.org_x * ray_hit.ray.tfar;
+			position.y = ray_hit.ray.org_y * ray_hit.ray.tfar;
+			position.z = ray_hit.ray.org_z * ray_hit.ray.tfar;
+
+			Vector3 direction{};
+			direction.x = -ray_hit.ray.dir_x;
+			direction.y = -ray_hit.ray.dir_y;
+			direction.z = -ray_hit.ray.dir_z;
+			direction.Normalize();
+
+			RTCGeometry geometry = rtcGetGeometry(scene_, ray_hit.hit.geomID);
+			Vector3 normal{};
+			rtcInterpolate0(geometry, ray_hit.hit.primID, ray_hit.hit.u, ray_hit.hit.v,
+				RTC_BUFFER_TYPE_VERTEX_ATTRIBUTE, 0, &normal.x, 3);
+			normal.Normalize();
+
+			if ((normal.x * ray_hit.ray.dir_x + normal.y * ray_hit.ray.dir_y + normal.z * ray_hit.ray.dir_z) > 0.0f) {
+				normal.x *= -1;
+				normal.y *= -1;
+				normal.z *= -1;
+			}
+			if (normal.DotProduct(direction) < 0)
+				normal = -normal;
+
+			float n1 = ior;
+			float n2;
+			
+			if (n1 == 1.0f)
+			{
+				n2 = 1.5f;
+			}
+			else
+				n2 = 1.0f;
+
+			/*  --TEST--
+			n1 = 1.5f;
+			n2 = 1.0f;
+			direction.x = -0.429;
+			direction.y = -0.903;
+			direction.z = 0;
+
+			normal.x = 0;
+			normal.y = 1;
+			normal.z = 0;
+			*/
+
+			// refract
+			//350
+
+			float div_n1n2 = (n1 / n2);
+			float dot_dn = direction.DotProduct(normal);
+
+			float cos_01 = (normal).DotProduct(direction);
+			if (cos_01 < 0) {
+				cos_01 = (-normal).DotProduct(direction);
+			}
+
+			float cos_02 = sqrt(1 - pow(div_n1n2, 2) * (1 - pow(cos_01, 2)));
+			float Rs = powf((n2 * cos_02 - n1 * cos_01) / (n2 * cos_02 + n1 * cos_01), 2);
+			float Rp = powf((n2 * cos_01 - n1 * cos_02) / (n2 * cos_01 + n1 * cos_02), 2);
+			float reflectivity__ = (Rs + Rp) * 0.5f; // R
+			float refractivity__ = 1.0f - reflectivity__; // T
+
+			float phi = (div_n1n2 * dot_dn + sqrt(1 - pow(div_n1n2, 2) * (1 - pow(dot_dn, 2))));
+			Vector3 direction_refracted{};
+			// check the direction i normal  
+			direction_refracted.x = div_n1n2 * -direction.x - phi * normal.x;
+			direction_refracted.y = div_n1n2 * -direction.y - phi * normal.y;
+			direction_refracted.z = div_n1n2 * -direction.z - phi * normal.z;
+			direction_refracted.Normalize();
+
+			RTCRay ray_refracted = generate_ray(position, direction_refracted);
+			RTCRayHit refracted_ray_hit = generate_ray_hit(ray_refracted);
+			Color4f refracted_color = shader(refracted_ray_hit, n2);
+
+			// reflect
+			Vector3 reflected{};
+			reflected.x = 2 * normal.DotProduct(direction) * normal.x - direction.x;
+			reflected.y = 2 * normal.DotProduct(direction) * normal.y - direction.y;
+			reflected.z = 2 * normal.DotProduct(direction) * normal.z - direction.z;
+			reflected.Normalize();
+
+			RTCRay ray = generate_ray(position, reflected);
+			RTCRayHit reflected_ray_hit = generate_ray_hit(ray);
+			Color4f blinn_phong = calc_blinn_phong(ray_hit);
+			Color4f reflected_color = shader(reflected_ray_hit);
+			float reflectivity = surfaces_[ray_hit.hit.geomID]->get_material()->reflectivity;
+			//return multiply_color(blinn_phong, shader(reflected_ray_hit));
+			//multiply_color(reflected_color, reflectivity__);
+
+			return multiply_color(multiply_color(shader(refracted_ray_hit), 1), 1);
+			
+			//Color4f amp = { 0.8, 1.0, 0.1, 1 };
+			Color4f amp = { 1, 1, 1, 1 };
+
+			Color4f final__{};
+			final__.r = reflected_color.r * reflectivity__ + refracted_color.r * refractivity__ * amp.r;
+			final__.g = reflected_color.g * reflectivity__ + refracted_color.g * refractivity__ * amp.g;
+			final__.b = reflected_color.b * reflectivity__ + refracted_color.b * refractivity__ * amp.b;
+			final__.a = 1.0f;
+			return final__;
+
+			//return multiply_color(refracted_color, refractivity__);
+			return add_color(multiply_color(reflected_color, reflectivity__), multiply_color(refracted_color, refractivity__));
+
+			return add_color(multiply_color(blinn_phong, reflectivity), multiply_color(reflected_color, 1 - reflectivity));
+
+
+
+			return Color4f{ 1, 1, 1, 1 };
+		}
+		else if (surfaces_[ray_hit.hit.geomID]->get_material()->get_name() == "black_plastic")
+		{
+			if (depth == 5)
+			{
+				depth = 0;
+				return shader(ray_hit);
+			}
+			depth += 1;
+
+			Vector3 position{};
+			position.x = ray_hit.ray.org_x * ray_hit.ray.tfar;
+			position.y = ray_hit.ray.org_y * ray_hit.ray.tfar;
+			position.z = ray_hit.ray.org_z * ray_hit.ray.tfar;
+
+			Vector3 direction{};
+			direction.x = -ray_hit.ray.dir_x;
+			direction.y = -ray_hit.ray.dir_y;
+			direction.z = -ray_hit.ray.dir_z;
+			direction.Normalize();
+
+			RTCGeometry geometry = rtcGetGeometry(scene_, ray_hit.hit.geomID);
+			Vector3 normal{};
+			rtcInterpolate0(geometry, ray_hit.hit.primID, ray_hit.hit.u, ray_hit.hit.v,
+				RTC_BUFFER_TYPE_VERTEX_ATTRIBUTE, 0, &normal.x, 3);
+			normal.Normalize();
+
+			/*
+			if (normal.DotProduct(direction) < 0)
+			{
+				normal.x *= -1;
+				normal.y *= -1;
+				normal.z *= -1;
+			}*/
+			if ((normal.x * ray_hit.ray.dir_x + normal.y * ray_hit.ray.dir_y + normal.z * ray_hit.ray.dir_z) > 0.0f) {
+				normal.x *= -1;
+				normal.y *= -1;
+				normal.z *= -1;
+			}
+			if (normal.DotProduct(direction) < 0)
+				normal = -normal;
+
+			Vector3 reflected{};
+			reflected.x = 2 * normal.DotProduct(direction) * normal.x - direction.x;
+			reflected.y = 2 * normal.DotProduct(direction) * normal.y - direction.y;
+			reflected.z = 2 * normal.DotProduct(direction) * normal.z - direction.z;
+			reflected.Normalize();
+
+			float n2 = 1.0f;
+			float n1 = 1.0f;
+
+			float cos_01 = (normal).DotProduct(direction);
+			if (cos_01 < 0) {
+				cos_01 = (-normal).DotProduct(direction);
+			}
+
+			float n_d = n1 / n2;
+			float sqrt_value = 1 - powf(n_d, 2) * (1 - powf(cos_01, 2));
+
+			float cos_02 = sqrt(sqrt_value);
+
+			float Rs = powf((n2 * cos_02 - n1 * cos_01) / (n2 * cos_02 + n1 * cos_01), 2);
+			float Rp = powf((n2 * cos_01 - n1 * cos_02) / (n2 * cos_01 + n1 * cos_02), 2);
+			float reflectivity__ = 0.5f * (Rs + Rp);
+			float refractivity__ = 1.0f - reflectivity__;
+
+
+			RTCRay ray = generate_ray(position, reflected);
+			RTCRayHit reflected_ray_hit = generate_ray_hit(ray);
+			Color4f blinn_phong = calc_blinn_phong(ray_hit);
+			Color4f reflected_color = shader(reflected_ray_hit);
+			float reflectivity = surfaces_[ray_hit.hit.geomID]->get_material()->reflectivity;
+			reflectivity = 0.8f;
+			reflectivity = 1.0f - reflectivity__;
+			reflectivity = 0.85f;
+			//return multiply_color(blinn_phong, shader(reflected_ray_hit));
+			//multiply_color(reflected_color, reflectivity__);
+			Vector3 specular = surfaces_[ray_hit.hit.geomID]->get_material()->specular;
+
+			//return multiply_color(shader(reflected_ray_hit), reflectivity);
+
+			return add_color(multiply_color(blinn_phong, reflectivity), multiply_color(reflected_color, 1-reflectivity));
+
+			//Color4f blinn_phong = calc_blinn_phong(ray_hit);
+			//Vector3 direction{ ray_hit.ray.dir_x, ray_hit.ray.dir_y, ray_hit.ray.dir_z };
+			//direction.Normalize();
+			//RTCRayHit reflect_ray_hit = generate_ray_hit(generate_ray(get_fragment_position(ray_hit), reflect(direction, //calc_normal(ray_hit))));
+			//Color4f reflected = shader(reflect_ray_hit);
+			//return multiply_color(blinn_phong, multiply_color(reflected, 0.9f));
+
+		}
+		else // white plastic
+		{
+			if (depth == 5)
+			{
+				depth = 0;
+				return shader(ray_hit);
+			}
+			depth += 1;
+
+
+			Vector3 position{};
+			position.x = ray_hit.ray.org_x * ray_hit.ray.tfar;
+			position.y = ray_hit.ray.org_y * ray_hit.ray.tfar;
+			position.z = ray_hit.ray.org_z * ray_hit.ray.tfar;
+
+			Vector3 direction{};
+			direction.x = -ray_hit.ray.dir_x;
+			direction.y = -ray_hit.ray.dir_y;
+			direction.z = -ray_hit.ray.dir_z;
+			direction.Normalize();
+
+			RTCGeometry geometry = rtcGetGeometry(scene_, ray_hit.hit.geomID);
+			Vector3 normal{};
+			rtcInterpolate0(geometry, ray_hit.hit.primID, ray_hit.hit.u, ray_hit.hit.v,
+				RTC_BUFFER_TYPE_VERTEX_ATTRIBUTE, 0, &normal.x, 3);
+			normal.Normalize();
+
+			/*if (normal.DotProduct(direction) < 0)
+			{
+				normal.x *= -1;
+				normal.y *= -1;
+				normal.z *= -1;
+			}*/
+
+			if ((normal.x * ray_hit.ray.dir_x + normal.y * ray_hit.ray.dir_y + normal.z * ray_hit.ray.dir_z) > 0.0f) {
+				normal.x *= -1;
+				normal.y *= -1;
+				normal.z *= -1;
+			}
+			if (normal.DotProduct(direction) < 0)
+				normal = -normal;
+
+			Vector3 reflected{}; 
+			reflected.x = 2 * normal.DotProduct(direction) * normal.x - direction.x;
+			reflected.y = 2 * normal.DotProduct(direction) * normal.y - direction.y;
+			reflected.z = 2 * normal.DotProduct(direction) * normal.z - direction.z;
+			reflected.Normalize();
+
+			RTCRay ray = generate_ray(position, reflected);
+			RTCRayHit reflected_ray_hit = generate_ray_hit(ray);
+			Color4f blinn_phong = calc_blinn_phong(ray_hit);
+			Color4f reflected_color = shader(reflected_ray_hit);
+			float reflectivity = surfaces_[ray_hit.hit.geomID]->get_material()->reflectivity;
+			reflectivity = 0.8f;
+			return add_color(multiply_color(blinn_phong, reflectivity), multiply_color(reflected_color, 1-reflectivity));
+
+
+			//Color4f blinn_phong = calc_blinn_phong(ray_hit);
+			//Vector3 direction{ ray_hit.ray.dir_x, ray_hit.ray.dir_y, ray_hit.ray.dir_z };
+			//direction.Normalize();
+			//RTCRayHit reflect_ray_hit = generate_ray_hit(generate_ray(get_fragment_position(ray_hit), reflect(direction, //calc_normal(ray_hit))));
+			//Color4f reflected = shader(reflect_ray_hit);
+			//return multiply_color(blinn_phong, multiply_color(reflected, 0.9f));
+		}
+	}
+	depth = 0;
+	// background
+	Vector3 dir{ ray_hit.ray.dir_x, -ray_hit.ray.dir_y, ray_hit.ray.dir_z };
+	const float theta = acos(dir.z);
+	const float phi = atan2f(dir.y, dir.x) + float(3.14159265358979323846);
+	const float u = 1.0f - phi * 0.5f * float(0.318309886183790671538);
+	const float v = theta * float(0.318309886183790671538);
+	Color3f bg = background->get_texel(u, v);
+
+	return Color4f{ bg.r, bg.g, bg.b, 1.0f };
+
+	return Color4f{ 1, 1, 1, 1 };
+	
 }
 
 // 640, 480
@@ -339,28 +708,57 @@ Color4f Raytracer::get_pixel( const int x, const int y, const float t )
 	RTCRay ray = camera_.GenerateRay(x, y);
 	
 	RTCRayHit ray_hit = generate_ray_hit(ray);
+	return shader(ray_hit);
 
 	if (ray_hit.hit.geomID != RTC_INVALID_GEOMETRY_ID)
 	{
+
 		Color4f blinn_phong = calc_blinn_phong(ray_hit);
 		Vector3 frag_pos = get_fragment_position(ray_hit);
 		bool test = generate_shadow_ray(frag_pos, light_position);
-		
-		Color4f final_color{0,0,0,1};
-		
-		final_color.r = blinn_phong.r;
-		final_color.g = blinn_phong.g;
-		final_color.b = blinn_phong.b;
+	
+		Color4f final_color{};
+		final_color.a = 1.0f;
 
+		current_material = surfaces_[ray_hit.hit.geomID]->get_material();
+		Vector3 ambient = current_material->ambient;
+		Vector3 diffuse = current_material->diffuse;
+		Vector3 specular = current_material->specular;
+
+		final_color.r = ambient.x + diffuse.x + (calc_normal(ray_hit).DotProduct(calc_light_dir(ray_hit)) + specular.x);
+		final_color.g = ambient.y + diffuse.y + (calc_normal(ray_hit).DotProduct(calc_light_dir(ray_hit)) + specular.y);
+		final_color.b = ambient.z + diffuse.z + (calc_normal(ray_hit).DotProduct(calc_light_dir(ray_hit)) + specular.z);
+		return final_color;
+		//final_color.r = blinn_phong.r;
+		//final_color.g = blinn_phong.g;
+		//final_color.b = blinn_phong.b;
+
+
+		RTCRay test_ = generate_ray(get_fragment_position(ray_hit), reflect({ ray_hit.ray.dir_x,ray_hit.ray.dir_y,ray_hit.ray.dir_z }, calc_normal(ray_hit)));
+
+		Color4f bonus{ 0,0,0,1 };
+
+		float reflectivity = 0;
+		RTCRayHit test__ = generate_ray_hit(test_);
+		if (test__.hit.geomID != RTC_INVALID_GEOMETRY_ID)
+		{
+			bonus = calc_blinn_phong(test__);
+			reflectivity = surfaces_[ray_hit.hit.geomID]->get_material()->reflectivity;
+		
+			// reflectivity
+			final_color.r = (1 - reflectivity) * bonus.r + reflectivity * final_color.r;
+			final_color.g = (1 - reflectivity) * bonus.g + reflectivity * final_color.g;
+			final_color.b = (1 - reflectivity) * bonus.b + reflectivity * final_color.b;
+
+		}
+		
 		float shadow_factor = 0.35f;
 		if (test)
-			return Color4f
-			{
-				final_color.r * shadow_factor, 
-				final_color.g * shadow_factor, 
-				final_color.b * shadow_factor, 1
-			};
-
+		{
+			final_color.r = final_color.r * shadow_factor;
+			final_color.g = final_color.g * shadow_factor;
+			final_color.b = final_color.b * shadow_factor;
+		}
 
 		return final_color;
 	}

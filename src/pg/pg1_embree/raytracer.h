@@ -37,6 +37,8 @@ private:
 	RTCRayHit generate_ray_hit(RTCRay ray);
 	RTCRay generate_ray(Vector3 position, Vector3 direction, float tfar = FLT_MAX);
 	bool generate_shadow_ray(Vector3 position, Vector3 direction);
+	Color4f shader(RTCRayHit ray_hit, float ior = 1.0f);
+	Texture* background = nullptr;
 
 private:
 	std::vector<Surface *> surfaces_;
@@ -48,7 +50,8 @@ private:
 
 	// my decl
 	Material* current_material = nullptr;
-	//Vector3 light_position{ 50, 20, 50 };
 	Vector3 light_position{ 175, 80, 100 };
+	//Vector3 light_position{ 150, 20, 50 };
+	int depth = 0;
 
 };
