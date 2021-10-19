@@ -690,33 +690,15 @@ Color4f Raytracer::shader(RTCRayHit ray_hit, float ior)
 			reflected.z = 2 * normal.DotProduct(direction) * normal.z - direction.z;
 			reflected.Normalize();
 
-			float n2 = 1.0f;
-			float n1 = 1.0f;
 
-			float cos_01 = (normal).DotProduct(direction);
-			if (cos_01 < 0) {
-				cos_01 = (-normal).DotProduct(direction);
-			}
-
-			float n_d = n1 / n2;
-			float sqrt_value = 1 - powf(n_d, 2) * (1 - powf(cos_01, 2));
-
-			float cos_02 = sqrt(sqrt_value);
-
-			float Rs = powf((n2 * cos_02 - n1 * cos_01) / (n2 * cos_02 + n1 * cos_01), 2);
-			float Rp = powf((n2 * cos_01 - n1 * cos_02) / (n2 * cos_01 + n1 * cos_02), 2);
-			float reflectivity__ = 0.5f * (Rs + Rp);
-			float refractivity__ = 1.0f - reflectivity__;
-
-
+			
 			RTCRay ray = generate_ray(position, reflected);
 			RTCRayHit reflected_ray_hit = generate_ray_hit(ray);
 			Color4f blinn_phong = calc_blinn_phong(ray_hit);
 			Color4f reflected_color = shader(reflected_ray_hit);
 			float reflectivity = surfaces_[ray_hit.hit.geomID]->get_material()->reflectivity;
 			reflectivity = 0.8f;
-			reflectivity = 1.0f - reflectivity__;
-			reflectivity = 0.85f;
+			
 			//return multiply_color(blinn_phong, shader(reflected_ray_hit));
 			//multiply_color(reflected_color, reflectivity__);
 			Vector3 specular = surfaces_[ray_hit.hit.geomID]->get_material()->specular;
