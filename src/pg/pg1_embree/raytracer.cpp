@@ -6,17 +6,17 @@
 
 #define SPECULAR_STRENGTH 0.5
 
-Raytracer::Raytracer( const int width, const int height,
+Raytracer::Raytracer(const int width, const int height,
 	const float fov_y, const Vector3 view_from, const Vector3 view_at,
-	const char * config ) : SimpleGuiDX11( width, height )
+	const char* config) : SimpleGuiDX11(width, height)
 {
-	InitDeviceAndScene( config );
+	InitDeviceAndScene(config);
 
-	camera_ = Camera( width, height, fov_y, view_from, view_at );
+	camera_ = Camera(width, height, fov_y, view_from, view_at);
 	//background = new Texture("C:\\dev\\pg1_template_embree_vs2019\\data\\snowy_cemetery.jpg");
 	//background = new Texture("C:\\dev\\pg1_template_embree_vs2019\\data\\large_corridor.jpg");
 	background = new Texture("C:\\dev\\pg1_template_embree_vs2019\\data\\photo_studio_loft_hall.jpg");
-	
+
 }
 
 Raytracer::~Raytracer()
@@ -24,82 +24,82 @@ Raytracer::~Raytracer()
 	ReleaseDeviceAndScene();
 }
 
-int Raytracer::InitDeviceAndScene( const char * config )
+int Raytracer::InitDeviceAndScene(const char* config)
 {
-	device_ = rtcNewDevice( config );
-	error_handler( nullptr, rtcGetDeviceError( device_ ), "Unable to create a new device.\n" );
-	rtcSetDeviceErrorFunction( device_, error_handler, nullptr );
+	device_ = rtcNewDevice(config);
+	error_handler(nullptr, rtcGetDeviceError(device_), "Unable to create a new device.\n");
+	rtcSetDeviceErrorFunction(device_, error_handler, nullptr);
 
-	ssize_t triangle_supported = rtcGetDeviceProperty( device_, RTC_DEVICE_PROPERTY_TRIANGLE_GEOMETRY_SUPPORTED );
+	ssize_t triangle_supported = rtcGetDeviceProperty(device_, RTC_DEVICE_PROPERTY_TRIANGLE_GEOMETRY_SUPPORTED);
 
 	// create a new scene bound to the specified device
-	scene_ = rtcNewScene( device_ );
+	scene_ = rtcNewScene(device_);
 
 	return S_OK;
 }
 
 int Raytracer::ReleaseDeviceAndScene()
 {
-	rtcReleaseScene( scene_ );
-	rtcReleaseDevice( device_ );
+	rtcReleaseScene(scene_);
+	rtcReleaseDevice(device_);
 
 	return S_OK;
 }
 
-void Raytracer::LoadScene( const std::string file_name )
+void Raytracer::LoadScene(const std::string file_name)
 {
-	const int no_surfaces = LoadOBJ( file_name.c_str(), surfaces_, materials_ );
+	const int no_surfaces = LoadOBJ(file_name.c_str(), surfaces_, materials_);
 
 	// surfaces loop
-	for ( auto surface : surfaces_ )
+	for (auto surface : surfaces_)
 	{
-		RTCGeometry mesh = rtcNewGeometry( device_, RTC_GEOMETRY_TYPE_TRIANGLE );
+		RTCGeometry mesh = rtcNewGeometry(device_, RTC_GEOMETRY_TYPE_TRIANGLE);
 
-		Vertex3f * vertices = ( Vertex3f * )rtcSetNewGeometryBuffer(
+		Vertex3f* vertices = (Vertex3f*)rtcSetNewGeometryBuffer(
 			mesh, RTC_BUFFER_TYPE_VERTEX, 0, RTC_FORMAT_FLOAT3,
-			sizeof( Vertex3f ), 3 * surface->no_triangles() );
+			sizeof(Vertex3f), 3 * surface->no_triangles());
 
-		Triangle3ui * triangles = ( Triangle3ui * )rtcSetNewGeometryBuffer(
+		Triangle3ui* triangles = (Triangle3ui*)rtcSetNewGeometryBuffer(
 			mesh, RTC_BUFFER_TYPE_INDEX, 0, RTC_FORMAT_UINT3,
-			sizeof( Triangle3ui ), surface->no_triangles() );
+			sizeof(Triangle3ui), surface->no_triangles());
 
-		rtcSetGeometryUserData( mesh, ( void* )( surface->get_material() ) );
+		rtcSetGeometryUserData(mesh, (void*)(surface->get_material()));
 
-		rtcSetGeometryVertexAttributeCount( mesh, 2 );
+		rtcSetGeometryVertexAttributeCount(mesh, 2);
 
-		Normal3f * normals = ( Normal3f * )rtcSetNewGeometryBuffer(
+		Normal3f* normals = (Normal3f*)rtcSetNewGeometryBuffer(
 			mesh, RTC_BUFFER_TYPE_VERTEX_ATTRIBUTE, 0, RTC_FORMAT_FLOAT3,
-			sizeof( Normal3f ), 3 * surface->no_triangles() );
+			sizeof(Normal3f), 3 * surface->no_triangles());
 
-		Coord2f * tex_coords = ( Coord2f * )rtcSetNewGeometryBuffer(
+		Coord2f* tex_coords = (Coord2f*)rtcSetNewGeometryBuffer(
 			mesh, RTC_BUFFER_TYPE_VERTEX_ATTRIBUTE, 1, RTC_FORMAT_FLOAT2,
-			sizeof( Coord2f ), 3 * surface->no_triangles() );		
+			sizeof(Coord2f), 3 * surface->no_triangles());
 
 		// triangles loop
-		for ( int i = 0, k = 0; i < surface->no_triangles(); ++i )
+		for (int i = 0, k = 0; i < surface->no_triangles(); ++i)
 		{
-Triangle& triangle = surface->get_triangle(i);
+			Triangle& triangle = surface->get_triangle(i);
 
-// vertices loop
-for (int j = 0; j < 3; ++j, ++k)
-{
-	const Vertex& vertex = triangle.vertex(j);
+			// vertices loop
+			for (int j = 0; j < 3; ++j, ++k)
+			{
+				const Vertex& vertex = triangle.vertex(j);
 
-	vertices[k].x = vertex.position.x;
-	vertices[k].y = vertex.position.y;
-	vertices[k].z = vertex.position.z;
+				vertices[k].x = vertex.position.x;
+				vertices[k].y = vertex.position.y;
+				vertices[k].z = vertex.position.z;
 
-	normals[k].x = vertex.normal.x;
-	normals[k].y = vertex.normal.y;
-	normals[k].z = vertex.normal.z;
+				normals[k].x = vertex.normal.x;
+				normals[k].y = vertex.normal.y;
+				normals[k].z = vertex.normal.z;
 
-	tex_coords[k].u = vertex.texture_coords[0].u;
-	tex_coords[k].v = vertex.texture_coords[0].v;
-} // end of vertices loop
+				tex_coords[k].u = vertex.texture_coords[0].u;
+				tex_coords[k].v = vertex.texture_coords[0].v;
+			} // end of vertices loop
 
-triangles[i].v0 = k - 3;
-triangles[i].v1 = k - 2;
-triangles[i].v2 = k - 1;
+			triangles[i].v0 = k - 3;
+			triangles[i].v1 = k - 2;
+			triangles[i].v2 = k - 1;
 		} // end of triangles loop
 
 		rtcCommitGeometry(mesh);
@@ -220,7 +220,7 @@ Vector3 Raytracer::get_fragment_position(RTCRayHit ray_hit)
 	Vertex A = surfaces_[ray_hit.hit.geomID]->get_triangle(0).vertex(0);
 	Vertex B = surfaces_[ray_hit.hit.geomID]->get_triangle(0).vertex(1);
 	Vertex C = surfaces_[ray_hit.hit.geomID]->get_triangle(0).vertex(2);
-	
+
 	float u = ray_hit.hit.v;
 	float v = ray_hit.hit.u;
 	float w = 1 - u - v;
@@ -243,7 +243,7 @@ Vector3 Raytracer::get_fragment_position(RTCRayHit ray_hit)
 		ray_hit.ray.org_z + (ray_hit.ray.dir_z * ray_hit.ray.tfar)
 	};
 	// calc normal
-	
+
 	Vector3 normal = calc_normal(ray_hit);
 	Vector3 light_dir = light_position - frag_pos;
 	light_dir.Normalize();
@@ -257,7 +257,7 @@ Vector3 Raytracer::get_fragment_position(RTCRayHit ray_hit)
 		normal = -normal;
 
 	frag_pos += normal * 0.001f;
-	
+
 	return frag_pos;
 
 #endif
@@ -316,7 +316,7 @@ Color4f Raytracer::calc_blinn_phong(RTCRayHit ray_hit)
 		normal.z *= -1;
 	}
 	Vector3 reflect_dir = reflect(camera_.view_direction, normal);
-	
+
 	Vector3 halfway_dir = camera_.view_direction + light_dir;
 	halfway_dir.Normalize();
 	//float spec_ = pow(max(normal.DotProduct(halfway_dir), 0.0), current_material->shininess);
@@ -344,7 +344,7 @@ RTCRay Raytracer::generate_ray(Vector3 position, Vector3 direction, float tfar)
 	ray.org_y = position.y;
 	ray.org_z = position.z;
 	ray.tnear = 0.01f; // start of ray segment
-	
+
 	ray.dir_x = direction.x;
 	ray.dir_y = direction.y;
 	ray.dir_z = direction.z;
@@ -390,7 +390,7 @@ RTCRayHit Raytracer::generate_ray_hit(RTCRay ray)
 	RTCRayHit ray_hit;
 	ray_hit.ray = ray;
 	ray_hit.hit = hit;
-	
+
 	// intersect ray with the scene
 	RTCIntersectContext context;
 	rtcInitIntersectContext(&context);
@@ -398,14 +398,64 @@ RTCRayHit Raytracer::generate_ray_hit(RTCRay ray)
 	return ray_hit;
 }
 
-Color4f Raytracer::shader(RTCRayHit ray_hit, float ior)
+Color4f Raytracer::shader(RTCRayHit ray_hit, float depth, float ior)
 {
-	// return diffuse?
-	//if (depth == 5)
-	//{
-	//	depth = 0;
-	//	return calc_blinn_phong(ray_hit);
-	//}
+	if (depth >= 10 && ray_hit.hit.geomID != RTC_INVALID_GEOMETRY_ID)
+	{
+		Vector3 d = { ray_hit.ray.dir_x,ray_hit.ray.dir_y,ray_hit.ray.dir_z };
+		Vector3 v = -d;
+		
+		//Vector3 ambient = surfaces_[ray_hit.hit.geomID]->get_material()->ambient;
+		Vector3 ambient = {0.2f, 0.2f, 0.2f};
+
+		RTCGeometry geometry = rtcGetGeometry(scene_, ray_hit.hit.geomID);
+		Vector3 normal{};
+		rtcInterpolate0(geometry, ray_hit.hit.primID, ray_hit.hit.u, ray_hit.hit.v,
+			RTC_BUFFER_TYPE_VERTEX_ATTRIBUTE, 0, &normal.x, 3);
+		normal.Normalize();
+
+		if ((normal.x * v.x + normal.y * v.y + normal.z * v.z) > 0.0f) {
+			normal.x *= -1;
+			normal.y *= -1;
+			normal.z *= -1;
+		}
+		if (normal.DotProduct(v) < 0)
+			normal = -normal;
+
+		Vector3 p{};
+		p.x = ray_hit.ray.org_x + (ray_hit.ray.dir_x * ray_hit.ray.tfar);
+		p.y = ray_hit.ray.org_y + (ray_hit.ray.dir_y * ray_hit.ray.tfar);
+		p.z = ray_hit.ray.org_z + (ray_hit.ray.dir_z * ray_hit.ray.tfar);
+
+		Vector3 light_dir{};
+		light_dir.x = p.x - light_position.x;
+		light_dir.y = p.y - light_position.y;
+		light_dir.z = p.z - light_position.z;
+		float diffuse_strength = max(normal.DotProduct(light_dir), 0.0f);
+		diffuse_strength = abs(diffuse_strength);
+		Vector3 diffuse = surfaces_[ray_hit.hit.geomID]->get_material()->diffuse;
+		diffuse.x = diffuse.x * diffuse_strength;
+		diffuse.y = diffuse.y * diffuse_strength;
+		diffuse.z = diffuse.z * diffuse_strength;
+
+		Vector3 specular = surfaces_[ray_hit.hit.geomID]->get_material()->specular;
+		Vector3 reflected{};
+		reflected.x = (2 * v.DotProduct(normal)) * normal.x - v.x;
+		reflected.y = (2 * v.DotProduct(normal)) * normal.y - v.y;
+		reflected.z = (2 * v.DotProduct(normal)) * normal.z - v.z;
+		float specular_strength = pow(max(reflected.DotProduct(v), 0.0f), 2);
+		specular.x = specular.x * specular_strength;
+		specular.y = specular.y * specular_strength;
+		specular.z = specular.z * specular_strength;
+		
+		Color4f final_color{};
+		final_color.r = ambient.x + (specular.x + diffuse.x);
+		final_color.g = ambient.y + (specular.y + diffuse.y);
+		final_color.b = ambient.z + (specular.z + diffuse.z);
+		final_color.a = 1.0f;
+		return final_color;
+
+	}
 
 
 	if (ray_hit.hit.geomID != RTC_INVALID_GEOMETRY_ID)
@@ -414,13 +464,6 @@ Color4f Raytracer::shader(RTCRayHit ray_hit, float ior)
 		if (surfaces_[ray_hit.hit.geomID]->get_material()->get_name() == "green_plastic_transparent" ||
 			surfaces_[ray_hit.hit.geomID]->get_material()->get_name() == "wire_214229166")
 		{
-			if (depth == 10)
-			{
-				depth = 0;
-				return { 1, 1, 1, 1 };//shader(ray_hit);
-			}
-			depth += 1;
-
 			////////////////
 			float n1 = ior;
 			float n2;
@@ -482,7 +525,7 @@ Color4f Raytracer::shader(RTCRayHit ray_hit, float ior)
 			RTCRayHit refl_ray_hit = generate_ray_hit(refl_ray);
 
 			//Color4f r = shader(refl_ray_hit);
-			Color4f t = shader(refr_ray_hit, n2);
+			Color4f t = shader(refr_ray_hit, depth + 1, n2);
 
 			Vector3 att_coef = surfaces_[ray_hit.hit.geomID]->get_material()->emission;
 			att_coef = { 1.0f, 0.1f, 1.0f };
@@ -645,13 +688,6 @@ Color4f Raytracer::shader(RTCRayHit ray_hit, float ior)
 		}
 		else if (surfaces_[ray_hit.hit.geomID]->get_material()->get_name() == "black_plastic")
 		{
-			if (depth == 5)
-			{
-				depth = 0;
-				return Color4f{ 1, 1, 1, 1 };// shader(ray_hit);
-			}
-			depth += 1;
-
 			Vector3 position{};
 			position.x = ray_hit.ray.org_x * ray_hit.ray.tfar;
 			position.y = ray_hit.ray.org_y * ray_hit.ray.tfar;
@@ -691,21 +727,21 @@ Color4f Raytracer::shader(RTCRayHit ray_hit, float ior)
 			reflected.Normalize();
 
 
-			
+
 			RTCRay ray = generate_ray(position, reflected);
 			RTCRayHit reflected_ray_hit = generate_ray_hit(ray);
 			Color4f blinn_phong = calc_blinn_phong(ray_hit);
-			Color4f reflected_color = shader(reflected_ray_hit);
+			Color4f reflected_color = shader(reflected_ray_hit, depth + 1);
 			float reflectivity = surfaces_[ray_hit.hit.geomID]->get_material()->reflectivity;
 			reflectivity = 0.8f;
-			
+
 			//return multiply_color(blinn_phong, shader(reflected_ray_hit));
 			//multiply_color(reflected_color, reflectivity__);
 			Vector3 specular = surfaces_[ray_hit.hit.geomID]->get_material()->specular;
 
 			//return multiply_color(shader(reflected_ray_hit), reflectivity);
 
-			return add_color(multiply_color(blinn_phong, reflectivity), multiply_color(reflected_color, 1-reflectivity));
+			return add_color(multiply_color(blinn_phong, reflectivity), multiply_color(reflected_color, 1 - reflectivity));
 
 			//Color4f blinn_phong = calc_blinn_phong(ray_hit);
 			//Vector3 direction{ ray_hit.ray.dir_x, ray_hit.ray.dir_y, ray_hit.ray.dir_z };
@@ -717,14 +753,6 @@ Color4f Raytracer::shader(RTCRayHit ray_hit, float ior)
 		}
 		else // white plastic
 		{
-			if (depth == 5)
-			{
-				depth = 0;
-				return {1, 1, 1, 1}; shader(ray_hit);
-			}
-			depth += 1;
-
-
 			Vector3 position{};
 			position.x = ray_hit.ray.org_x * ray_hit.ray.tfar;
 			position.y = ray_hit.ray.org_y * ray_hit.ray.tfar;
@@ -757,7 +785,7 @@ Color4f Raytracer::shader(RTCRayHit ray_hit, float ior)
 			if (normal.DotProduct(direction) < 0)
 				normal = -normal;
 
-			Vector3 reflected{}; 
+			Vector3 reflected{};
 			reflected.x = 2 * normal.DotProduct(direction) * normal.x - direction.x;
 			reflected.y = 2 * normal.DotProduct(direction) * normal.y - direction.y;
 			reflected.z = 2 * normal.DotProduct(direction) * normal.z - direction.z;
@@ -766,10 +794,10 @@ Color4f Raytracer::shader(RTCRayHit ray_hit, float ior)
 			RTCRay ray = generate_ray(position, reflected);
 			RTCRayHit reflected_ray_hit = generate_ray_hit(ray);
 			Color4f blinn_phong = calc_blinn_phong(ray_hit);
-			Color4f reflected_color = shader(reflected_ray_hit);
+			Color4f reflected_color = shader(reflected_ray_hit, depth + 1);
 			float reflectivity = surfaces_[ray_hit.hit.geomID]->get_material()->reflectivity;
 			reflectivity = 0.8f;
-			return add_color(multiply_color(blinn_phong, reflectivity), multiply_color(reflected_color, 1-reflectivity));
+			return add_color(multiply_color(blinn_phong, reflectivity), multiply_color(reflected_color, 1 - reflectivity));
 
 
 			//Color4f blinn_phong = calc_blinn_phong(ray_hit);
@@ -780,7 +808,6 @@ Color4f Raytracer::shader(RTCRayHit ray_hit, float ior)
 			//return multiply_color(blinn_phong, multiply_color(reflected, 0.9f));
 		}
 	}
-	depth = 0;
 	// background
 	Vector3 dir{ -ray_hit.ray.dir_x, -ray_hit.ray.dir_y, ray_hit.ray.dir_z };
 	const float theta = acos(dir.z);
@@ -792,17 +819,17 @@ Color4f Raytracer::shader(RTCRayHit ray_hit, float ior)
 	return Color4f{ bg.r, bg.g, bg.b, 1.0f };
 
 	return Color4f{ 1, 1, 1, 1 };
-	
+
 }
 
 // 640, 480
-Color4f Raytracer::get_pixel( const int x, const int y, const float t )
+Color4f Raytracer::get_pixel(const int x, const int y, const float t)
 {
 	// TODO generate primary ray and perform ray cast on the scene
 	RTCRay ray = camera_.GenerateRay(x, y);
-	
+
 	RTCRayHit ray_hit = generate_ray_hit(ray);
-	return shader(ray_hit);
+	return shader(ray_hit, 0);
 
 	if (ray_hit.hit.geomID != RTC_INVALID_GEOMETRY_ID)
 	{
@@ -810,7 +837,7 @@ Color4f Raytracer::get_pixel( const int x, const int y, const float t )
 		Color4f blinn_phong = calc_blinn_phong(ray_hit);
 		Vector3 frag_pos = get_fragment_position(ray_hit);
 		bool test = generate_shadow_ray(frag_pos, light_position);
-	
+
 		Color4f final_color{};
 		final_color.a = 1.0f;
 
@@ -838,14 +865,14 @@ Color4f Raytracer::get_pixel( const int x, const int y, const float t )
 		{
 			bonus = calc_blinn_phong(test__);
 			reflectivity = surfaces_[ray_hit.hit.geomID]->get_material()->reflectivity;
-		
+
 			// reflectivity
 			final_color.r = (1 - reflectivity) * bonus.r + reflectivity * final_color.r;
 			final_color.g = (1 - reflectivity) * bonus.g + reflectivity * final_color.g;
 			final_color.b = (1 - reflectivity) * bonus.b + reflectivity * final_color.b;
 
 		}
-		
+
 		float shadow_factor = 0.35f;
 		if (test)
 		{
@@ -857,7 +884,7 @@ Color4f Raytracer::get_pixel( const int x, const int y, const float t )
 		return final_color;
 	}
 
-	return Color4f{ (float)x/ 640.0f, 0.0f, (float)y / 480.0f, 1.0f };
+	return Color4f{ (float)x / 640.0f, 0.0f, (float)y / 480.0f, 1.0f };
 }
 
 int Raytracer::Ui()
@@ -866,26 +893,26 @@ int Raytracer::Ui()
 	static int counter = 0;
 
 	// Use a Begin/End pair to created a named window
-	ImGui::Begin( "Ray Tracer Params" );
-	
-	ImGui::Text( "Surfaces = %d", surfaces_.size() );
-	ImGui::Text( "Materials = %d", materials_.size() );
+	ImGui::Begin("Ray Tracer Params");
+
+	ImGui::Text("Surfaces = %d", surfaces_.size());
+	ImGui::Text("Materials = %d", materials_.size());
 	ImGui::Separator();
-	ImGui::Checkbox( "Vsync", &vsync_ );
-	
+	ImGui::Checkbox("Vsync", &vsync_);
+
 	//ImGui::Checkbox( "Demo Window", &show_demo_window ); // Edit bools storing our window open/close state
 	//ImGui::Checkbox( "Another Window", &show_another_window );
 
-	ImGui::SliderFloat( "float", &f, 0.0f, 1.0f ); // Edit 1 float using a slider from 0.0f to 1.0f    
+	ImGui::SliderFloat("float", &f, 0.0f, 1.0f); // Edit 1 float using a slider from 0.0f to 1.0f    
 	//ImGui::ColorEdit3( "clear color", ( float* )&clear_color ); // Edit 3 floats representing a color
 
 	// Buttons return true when clicked (most widgets return true when edited/activated)
-	if ( ImGui::Button( "Button" ) )
+	if (ImGui::Button("Button"))
 		counter++;
 	ImGui::SameLine();
-	ImGui::Text( "counter = %d", counter );
+	ImGui::Text("counter = %d", counter);
 
-	ImGui::Text( "Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate );
+	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 	ImGui::End();
 
 	// 3. Show another simple window.
