@@ -38,6 +38,7 @@ private:
 	RTCRay generate_ray(Vector3 position, Vector3 direction, float tfar = FLT_MAX);
 	bool generate_shadow_ray(Vector3 position, Vector3 direction);
 	Color4f shader(RTCRayHit ray_hit, float depth, float ior = 1.0f);
+	Color4f shader_BRDF(RTCRayHit ray_hit, float depth, float ior = 1.0f);
 	Texture* background = nullptr;
 
 private:
@@ -50,8 +51,21 @@ private:
 
 	// my decl
 	Material* current_material = nullptr;
-	Vector3 light_position{ 175, 80, 100 };
-	//Vector3 light_position{ 150, 20, 50 };
+#if LEGO_SPACESHIP
+	Vector3 light_position{ 137, -120, 190 };
+	// 180, -100, 190
+	// 180, -100, 300
+#endif
+
+#if REFRACTION_SPHERE
+	Vector3 light_position{ 90, -50, 150 };
+#endif
+
+#if CORNELL_BOX
+	Vector3 light_position{ 0, -650, 250 };
+#endif
+
 	int depth = 0;
+	int real_depth = 0;
 
 };

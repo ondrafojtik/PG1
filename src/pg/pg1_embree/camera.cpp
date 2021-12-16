@@ -9,8 +9,8 @@
 // CS - camera system
 // WS - world system
 
-Camera::Camera( const int width, const int height, const float fov_y,
-	const Vector3 view_from, const Vector3 view_at )
+Camera::Camera(const int width, const int height, const float fov_y,
+	const Vector3 view_from, const Vector3 view_at)
 {
 	width_ = width;
 	height_ = height;
@@ -29,6 +29,30 @@ Camera::Camera( const int width, const int height, const float fov_y,
 	y_cs.Normalize();
 	// TODO compute focal lenght based on the vertical field of view and the camera resolution
 	f_y_ = height_ / (2.0f * tan(fov_y_ / 2.0f));
+	// TODO build M_c_w_ matrix	
+	M_c_w_ = Matrix3x3(x_cs, y_cs, _forward);
+}
+
+Camera::Camera(const int width, const int height, const float fov_y,
+	const Vector3 view_from, const Vector3 view_at, float focal_point)
+{
+	width_ = width;
+	height_ = height;
+	fov_y_ = fov_y;
+
+	view_from_ = view_from;
+	view_at_ = view_at;
+
+	Vector3 _forward = view_from - view_at;
+	_forward.Normalize();
+	view_direction = _forward;
+
+	Vector3 x_cs = up_.CrossProduct(_forward);
+	x_cs.Normalize();
+	Vector3 y_cs = _forward.CrossProduct(x_cs);
+	y_cs.Normalize();
+	// TODO compute focal lenght based on the vertical field of view and the camera resolution
+	f_y_ = focal_point;
 	// TODO build M_c_w_ matrix	
 	M_c_w_ = Matrix3x3(x_cs, y_cs, _forward);
 }

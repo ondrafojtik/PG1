@@ -114,6 +114,9 @@ void SimpleGuiDX11::Producer()
 				local_data[offset + 2] = pixel.b;
 				local_data[offset + 3] = pixel.a;
 				//pixel.copy( local_data[offset] );
+				
+				//std::lock_guard<std::mutex> lock(tex_data_lock_);
+				//memcpy(tex_data_, local_data, width_ * height_ * 4 * sizeof(float));
 			}
 		}
 

@@ -11,6 +11,8 @@
 \version 0.95
 \date 2012-2018
 */
+
+
 class Texture
 {
 public:
@@ -18,6 +20,7 @@ public:
 	~Texture();
 
 	Color3f get_texel( const float u, const float v ) const;
+	Color3f get_bilinear_texel(const float u, const float v) const;
 
 	int width() const;
 	int height() const;

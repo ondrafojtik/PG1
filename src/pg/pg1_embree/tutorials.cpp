@@ -184,11 +184,28 @@ int tutorial_3( const std::string file_name, const char * config )
 	//gui.MainLoop();
 
 	//original!
+#if LEGO_SPACESHIP
 	Raytracer raytracer( 640, 480, deg2rad( 45.0 ),
-		Vector3( 175, -140, 130 ), Vector3( 0, 0, 35 ), config );
+		Vector3(110, -130, 120), Vector3( 0, 0, 35 ), config );
+	// 110, -130, 120
+	// 130, -100, 90
+
 	
-	//Raytracer raytracer(640, 480, deg2rad(45.0),
-	//	Vector3(0, -3.0f, 0), Vector3(0, 0, 0), config);
+	// 100, -100, 75
+	// 130, -100, 90	-- fajn
+	// 100, -150, 120	-- best ?
+	// 190, -120, 140
+#endif
+
+#if REFRACTION_SPHERE
+	Raytracer raytracer(640, 480, deg2rad(45.0),
+		Vector3(0, -3.0f, 0), Vector3(0, 0, 0), config);
+#endif
+
+#if CORNELL_BOX
+	Raytracer raytracer(640, 480, deg2rad(45.0),
+		Vector3(0, -650, 250), Vector3(0, 0, 250), config);
+#endif
 
 	raytracer.LoadScene( file_name );
 	raytracer.MainLoop();

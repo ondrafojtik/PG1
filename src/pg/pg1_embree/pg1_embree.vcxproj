@@ -171,6 +171,7 @@
     <ClInclude Include="matrix3x3.h" />
     <ClInclude Include="mymath.h" />
     <ClInclude Include="objloader.h" />
+    <ClInclude Include="Random.h" />
     <ClInclude Include="raytracer.h" />
     <ClInclude Include="simpleguidx11.h" />
     <ClInclude Include="stdafx.h" />
@@ -195,6 +196,7 @@
     <ClCompile Include="matrix3x3.cpp" />
     <ClCompile Include="mymath.cpp" />
     <ClCompile Include="objloader.cpp" />
+    <ClCompile Include="Random.cpp" />
     <ClCompile Include="raytracer.cpp" />
     <ClCompile Include="pg1_embree.cpp" />
     <ClCompile Include="simpleguidx11.cpp" />

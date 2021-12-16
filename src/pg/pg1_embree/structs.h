@@ -13,4 +13,22 @@ struct RTC_ALIGN( 16 ) Color4f
 	struct { float r, g, b, a; }; // a = 1 means that the pixel is opaque
 };
 
-struct Color3f { float r, g, b; };
+struct Color3f { 
+	float r, g, b; 
+	
+	Color3f operator*(const float val)
+	{
+		return Color3f{ this->r * val, this->g * val, this->b * val };
+	}
+
+	Color3f operator/(const float val)
+	{
+		return Color3f{ this->r / val, this->g / val, this->b / val };
+	}
+
+	Color3f operator+(const Color3f& val)
+	{
+		return Color3f{ this->r + val.r, this->g + val.g, this->b + val.b };
+	}
+
+};
