@@ -24,13 +24,13 @@ public:
 
 	int width() const;
 	int height() const;
+	BYTE* data_{ nullptr }; // image data in BGR format
 
 private:	
 	int width_{ 0 }; // image width (px)
 	int height_{ 0 }; // image height (px)
 	int scan_width_{ 0 }; // size of image row (bytes)
 	int pixel_size_{ 0 }; // size of each pixel (bytes)
-	BYTE * data_{ nullptr }; // image data in BGR format
 };
 
 #endif

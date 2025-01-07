@@ -5,6 +5,8 @@
 #include "texture.h"
 #include "mymath.h"
 
+#include <OpenImageDenoise/oidn.h>
+
 /* error reporting function */
 void error_handler( void * user_ptr, const RTCError code, const char * str )
 {
@@ -166,13 +168,83 @@ int tutorial_1( const char * config )
 	return EXIT_SUCCESS;
 }
 
+std::vector<float> to_float_buffer(Texture* albedo, int normal)
+{
+	std::vector<float> color_buffer;
+	for (int i = 0; i < albedo->height(); i++)
+	{
+		for (int j = 0; i < albedo->width(); j++)
+			for (int k = 0; k < 3; k++)
+			{
+				float value = albedo->data_[(i * albedo->width() + j) * 3 + k] / 255.0f;
+				if (normal == 1)
+					value = (value * 2) - 1;
+
+				color_buffer.push_back(value);
+			}
+	}
+	return color_buffer;
+}
+
 /* texture loading and texel access */
 int tutorial_2()
 {
 	// create texture
-	Texture texture( "../../../data/test4.png" );
-	Color3f texel = texture.get_texel( ( 1.0f / texture.width() ) * 2.5f, 0.0f );
-	printf( "(r = %0.3f, g = %0.3f, b = %0.3f)\n", texel.r, texel.g, texel.b );
+	//Texture texture( "../../../data/test4.png" );
+	//Color3f texel = texture.get_texel( ( 1.0f / texture.width() ) * 2.5f, 0.0f );
+	//printf( "(r = %0.3f, g = %0.3f, b = %0.3f)\n", texel.r, texel.g, texel.b );
+
+	// denoise
+	Texture albedo("../../../data/denoise/albedo_100spp.png");
+	Texture normal("../../../data/denoise/normal_100spp.png");
+	Texture color("../../../data/denoise/color_100spp.png");
+
+	auto albedo_ = to_float_buffer(&albedo, 0);
+	auto normal_ = to_float_buffer(&normal, 1);
+	auto color_ = to_float_buffer(&color, 0);
+
+	//float* outputPtr = new float(albedo.width() * albedo.height()*3);
+	std::vector<float> outputPtr;
+
+#if 1
+	// Create an Intel Open Image Denoise device
+	OIDNDevice device = oidnNewDevice(OIDN_DEVICE_TYPE_DEFAULT);
+	oidnCommitDevice(device);
+
+	// Create a filter for denoising a beauty (color) image using optional auxiliary images too
+	OIDNFilter filter = oidnNewFilter(device, "RT"); // generic ray tracing filter
+	oidnSetSharedFilterImage(filter, "color", color_.data(),
+		OIDN_FORMAT_FLOAT3, color.width(), color.height(), 0, 0, 0); // beauty
+	oidnSetSharedFilterImage(filter, "albedo", albedo_.data(),
+		OIDN_FORMAT_FLOAT3, albedo.width(), albedo.height(), 0, 0, 0); // auxiliary
+	oidnSetSharedFilterImage(filter, "normal", normal_.data(),
+		OIDN_FORMAT_FLOAT3, normal.width(), normal.height(), 0, 0, 0); // auxiliary
+	oidnSetSharedFilterImage(filter, "output", outputPtr.data(),
+		OIDN_FORMAT_FLOAT3, albedo.width(), albedo.height(), 0, 0, 0); // denoised beauty
+	oidnSetFilter1b(filter, "hdr", false); // beauty image is HDR
+	oidnCommitFilter(filter);
+
+	// Filter the image
+	oidnExecuteFilter(filter);
+
+	// Check for errors
+	const char* errorMessage;
+	if (oidnGetDeviceError(device, &errorMessage) != OIDN_ERROR_NONE)
+		printf("Error: %s\n", errorMessage);
+
+	// Cleanup
+	oidnReleaseFilter(filter);
+	oidnReleaseDevice(device);
+
+	FILE* file = fopen("../../../data/denoise/test.png", "wt");
+	fprintf(file, "PF\n");
+	fprintf(file, "%d %d\n", albedo.width(), albedo.height());
+	fprintf(file, "-1\n");
+	file = fopen("../../../data/denoise/test.png", "a+b");
+	fwrite(outputPtr.data(), sizeof(float) * 3, albedo.width() * albedo.height(), file);
+//	fclose(file);
+
+#endif
 
 	return EXIT_SUCCESS;
 }

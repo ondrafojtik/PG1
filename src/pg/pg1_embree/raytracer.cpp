@@ -54,7 +54,8 @@ Raytracer::Raytracer(const int width, const int height,
 
 	camera_ = Camera(width, height, fov_y, view_from, view_at);
 	//background = new Texture("C:\\dev\\pg1_template_embree_vs2019\\data\\snowy_cemetery.jpg");
-	background = new Texture("C:\\dev\\pg1_template_embree_vs2019\\data\\large_corridor.jpg");
+	//background = new Texture("C:\\dev\\pg1_template_embree_vs2019\\data\\large_corridor.jpg");
+	background = new Texture("../../../data/large_corridor.jpg");
 	//background = new Texture("C:\\dev\\pg1_template_embree_vs2019\\data\\photo_studio_loft_hall.jpg");
 
 }
@@ -511,9 +512,6 @@ Color4f Raytracer::shader(RTCRayHit ray_hit, float depth, float ior)
 			float R = (Rs + Rp) / 2;	// refl
 			float T = 1 - R;			// refr
 
-			if (R >= 1)
-				std::cout << "a";
-
 			Vector3 p{};
 			p.x = ray_hit.ray.org_x + (ray_hit.ray.dir_x * ray_hit.ray.tfar);
 			p.y = ray_hit.ray.org_y + (ray_hit.ray.dir_y * ray_hit.ray.tfar);
@@ -709,11 +707,9 @@ Color4f Raytracer::shader(RTCRayHit ray_hit, float depth, float ior)
 			//final_color.r = diffuse.x * factor + specular.x * spec_;
 			//final_color.g = diffuse.y * factor + specular.y * spec_;
 			//final_color.b = diffuse.z * factor + specular.z * spec_;
-
 			float reflectivity = current_material->reflectivity;
 			//reflectivity = 0.97;
 			
-
 			final_color.r += reflected_color.r * (1 - reflectivity);
 			final_color.g += reflected_color.g * (1 - reflectivity);
 			final_color.b += reflected_color.b * (1 - reflectivity);
@@ -868,7 +864,7 @@ Color4f Raytracer::get_pixel(const int x, const int y, const float t)
 	float aperture = 1;
 
 	int depth_of_field = 1;
-	int sample_amount = 1;
+	int sample_amount = 10;
 
 	for (int i = 0; i < sample_amount; i++)
 	{
@@ -981,7 +977,7 @@ Color4f Raytracer::get_pixel(const int x, const int y, const float t)
 
 #else
 	
-	int sample_amount = 5;
+	int sample_amount = 10;
 	for (int i = 0; i < sample_amount; i++)
 	{
 		float x_bonus = Random::Float();
